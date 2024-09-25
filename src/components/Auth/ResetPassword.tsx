@@ -1,14 +1,31 @@
 "use client";
 
-import { useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import cn from "classnames";
-import { Field, Form, Formik } from "formik";
 import Link from "next/link";
-import * as Yup from "yup";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "../ui/button";
+import { z } from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "../ui/form";
+import { Input } from "../ui/input";
 
-const ResetPasswordSchema = Yup.object().shape({
-  email: Yup.string().email("Invalid email").required("Required"),
+const FormSchema = z.object({
+  email: z.string().min(1, "Required").email("Invalid email"),
 });
 
 interface FormData {
@@ -17,8 +34,14 @@ interface FormData {
 
 const ResetPassword = () => {
   const supabase = createClientComponentClient();
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  const form = useForm<z.infer<typeof FormSchema>>({
+    resolver: zodResolver(FormSchema),
+    defaultValues: {
+      email: "",
+    },
+  });
 
   async function resetPassword({ email }: FormData) {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -26,47 +49,52 @@ const ResetPassword = () => {
     });
 
     if (error) {
-      setErrorMsg(error.message);
+      toast({
+        description: error.message,
+        variant: "destructive",
+        duration: 4000,
+      });
     } else {
-      setSuccessMsg("Password reset instructions sent.");
+      toast({
+        description: "Password reset instructions sent.",
+        duration: 4000,
+      });
     }
   }
 
   return (
-    <div className="card">
-      <h2 className="w-full text-center">Forgot Password</h2>
-      <Formik
-        initialValues={{
-          email: "",
-        }}
-        validationSchema={ResetPasswordSchema}
-        onSubmit={resetPassword}
-      >
-        {({ errors, touched }) => (
-          <Form className="column w-full">
-            <label htmlFor="email">Email</label>
-            <Field
-              className={cn("input", errors.email && "bg-red-50")}
-              id="email"
+    <Card className="w-[350px]">
+      <CardHeader>
+        <CardTitle className="text-4xl font-bold">Forgot Password</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(resetPassword)}>
+            <FormField
+              control={form.control}
               name="email"
-              placeholder="jane@acme.com"
-              type="email"
+              render={({ field }) => (
+                <FormItem className="text-start mb-10">
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="mail@example.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            {errors.email && touched.email ? (
-              <div className="text-red-600">{String(errors.email)}</div>
-            ) : null}
-            <button className="button-inverse w-full" type="submit">
+            <Button type="submit" className="w-full">
               Send Instructions
-            </button>
-          </Form>
-        )}
-      </Formik>
-      {errorMsg && <div className="text-center text-red-600">{errorMsg}</div>}
-      {successMsg && <div className="text-center text-black">{successMsg}</div>}
-      <Link href="/sign-in" className="link">
-        Remember your password? Sign In.
-      </Link>
-    </div>
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+      <CardFooter className="flex justify-center">
+        <Button variant="link">
+          <Link href="/sign-in">Remember your password? Sign In.</Link>
+        </Button>
+      </CardFooter>
+    </Card>
   );
 };
 

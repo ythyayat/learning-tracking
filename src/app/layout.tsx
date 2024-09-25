@@ -3,6 +3,7 @@ import { createServerComponentClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 
 import "@/styles/globals.css";
+import { Toaster } from "@/components/ui/toaster";
 
 // do not cache this layout
 export const revalidate = 0;
@@ -31,6 +32,7 @@ export default async function RootLayout({ children }: RootLayoutProps) {
             </AuthProvider>
           </main>
         </div>
+        <Toaster />
       </body>
     </html>
   );

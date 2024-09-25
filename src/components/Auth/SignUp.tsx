@@ -1,28 +1,47 @@
 "use client";
 
-import { useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import cn from "classnames";
-import { Field, Form, Formik } from "formik";
 import Link from "next/link";
-import * as Yup from "yup";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "../ui/form";
+import { Input } from "../ui/input";
+import { Button } from "../ui/button";
+import { useToast } from "@/hooks/use-toast";
 
-const SignUpSchema = Yup.object().shape({
-  email: Yup.string().email("Invalid email").required("Required"),
-  password: Yup.string().required("Required"),
+const FormSchema = z.object({
+  email: z.string().min(1, "Required").email("Invalid email"),
+  password: z.string().min(1, "Required"),
 });
-
-interface FormData {
-  email: string;
-  password: string;
-}
 
 const SignUp = () => {
   const supabase = createClientComponentClient();
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  async function signUp({ email, password }: FormData) {
+  const form = useForm<z.infer<typeof FormSchema>>({
+    resolver: zodResolver(FormSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  async function signUp({ email, password }: z.infer<typeof FormSchema>) {
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -30,65 +49,70 @@ const SignUp = () => {
     });
 
     if (error) {
-      setErrorMsg(error.message);
+      toast({
+        description: error.message,
+        variant: "destructive",
+        duration: 4000,
+      });
     } else {
-      setSuccessMsg(
-        "Success! Please check your email for further instructions."
-      );
+      toast({
+        description:
+          "Account created. Please check your email for verification link.",
+        duration: 4000,
+      });
     }
   }
 
   return (
-    <div className="card">
-      <h2 className="w-full text-center">Create Account</h2>
-      <Formik
-        initialValues={{
-          email: "",
-          password: "",
-        }}
-        validationSchema={SignUpSchema}
-        onSubmit={signUp}
-      >
-        {({ errors, touched }) => (
-          <Form className="column w-full">
-            <label htmlFor="email">Email</label>
-            <Field
-              className={cn("input", errors.email && "bg-red-50")}
-              id="email"
+    <Card className="w-[350px]">
+      <CardHeader>
+        <CardTitle className="text-4xl font-bold">Create Account</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(signUp)}>
+            <FormField
+              control={form.control}
               name="email"
-              placeholder="jane@acme.com"
-              type="email"
-            />
-            {errors.email && touched.email ? (
-              <div className="text-red-600">{String(errors.email)}</div>
-            ) : null}
-
-            <label htmlFor="email">Password</label>
-            <Field
-              className={cn(
-                "input",
-                errors.password && touched.password && "bg-red-50"
+              render={({ field }) => (
+                <FormItem className="text-start mb-4">
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="mail@example.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-              id="password"
-              name="password"
-              type="password"
             />
-            {errors.password && touched.password ? (
-              <div className="text-red-600">{String(errors.password)}</div>
-            ) : null}
-
-            <button className="button-inverse w-full" type="submit">
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem className="text-start mb-10">
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="your password"
+                      type="password"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" className="w-full">
               Submit
-            </button>
-          </Form>
-        )}
-      </Formik>
-      {errorMsg && <div className="text-red-600">{errorMsg}</div>}
-      {successMsg && <div className="text-black">{successMsg}</div>}
-      <Link href="/sign-in" className="link w-full">
-        Already have an account? Sign In.
-      </Link>
-    </div>
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+      <CardFooter className="flex justify-center">
+        <Button variant="link">
+          <Link href="/sign-in">Already have an account? Sign In.</Link>
+        </Button>
+      </CardFooter>
+    </Card>
   );
 };
 

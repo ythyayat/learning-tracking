@@ -1,32 +1,51 @@
 "use client";
 
-import { useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import cn from "classnames";
-import { Field, Form, Formik } from "formik";
+
 import { useRouter } from "next/navigation";
-import * as Yup from "yup";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "../ui/form";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useToast } from "@/hooks/use-toast";
+import { Input } from "../ui/input";
+import { Button } from "../ui/button";
 
-const UpdatePasswordSchema = Yup.object().shape({
-  password: Yup.string().required("Required"),
+const FormSchema = z.object({
+  password: z.string().min(1, "Required"),
 });
-
-interface FormData {
-  password: string;
-}
 
 const UpdatePassword = () => {
   const supabase = createClientComponentClient();
+  const { toast } = useToast();
   const router = useRouter();
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  async function updatePassword({ password }: FormData) {
+  const form = useForm<z.infer<typeof FormSchema>>({
+    resolver: zodResolver(FormSchema),
+    defaultValues: {
+      password: "",
+    },
+  });
+
+  async function updatePassword({ password }: z.infer<typeof FormSchema>) {
     const { error } = await supabase.auth.updateUser({
       password,
     });
 
     if (error) {
-      setErrorMsg(error.message);
+      toast({
+        description: error.message,
+        variant: "destructive",
+        duration: 4000,
+      });
     } else {
       // Go to Home page
       router.replace("/");
@@ -34,38 +53,37 @@ const UpdatePassword = () => {
   }
 
   return (
-    <div className="card">
-      <h2 className="w-full text-center">Update Password</h2>
-      <Formik
-        initialValues={{
-          password: "",
-        }}
-        validationSchema={UpdatePasswordSchema}
-        onSubmit={updatePassword}
-      >
-        {({ errors, touched }) => (
-          <Form className="column w-full">
-            <label htmlFor="email">New Password</label>
-            <Field
-              className={cn(
-                "input",
-                errors.password && touched.password && "bg-red-50"
-              )}
-              id="password"
+    <Card className="w-[350px]">
+      <CardHeader>
+        <CardTitle className="text-4xl font-bold">Update Password</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(updatePassword)}>
+            <FormField
+              control={form.control}
               name="password"
-              type="password"
+              render={({ field }) => (
+                <FormItem className="text-start mb-10">
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="your password"
+                      type="password"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            {errors.password && touched.password ? (
-              <div className="text-red-600">{String(errors.password)}</div>
-            ) : null}
-            <button className="button-inverse w-full" type="submit">
+            <Button className="w-full" type="submit">
               Update Password
-            </button>
-          </Form>
-        )}
-      </Formik>
-      {errorMsg && <div className="text-red-600">{errorMsg}</div>}
-    </div>
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 };
 

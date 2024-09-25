@@ -1,96 +1,115 @@
 "use client";
 
-import { useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import cn from "classnames";
-import { Field, Form, Formik } from "formik";
 import Link from "next/link";
-import * as Yup from "yup";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "../ui/card";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "../ui/form";
+import { useToast } from "@/hooks/use-toast";
 
-const SignInSchema = Yup.object().shape({
-  email: Yup.string().email("Invalid email").required("Required"),
-  password: Yup.string().required("Required"),
+const FormSchema = z.object({
+  email: z.string().min(1, "Required").email("Invalid email"),
+  password: z.string().min(1, "Required"),
 });
-
-interface FormData {
-  email: string;
-  password: string;
-}
 
 const SignIn = () => {
   const supabase = createClientComponentClient();
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  async function signIn({ email, password }: FormData) {
+  const form = useForm<z.infer<typeof FormSchema>>({
+    resolver: zodResolver(FormSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  async function signIn({ email, password }: z.infer<typeof FormSchema>) {
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
-      setErrorMsg(error.message);
+      toast({
+        description: error.message,
+        variant: "destructive",
+      });
     }
   }
 
-  console.log("rerender");
-
   return (
-    <div className="card">
-      <h2 className="w-full text-center">Sign In</h2>
-      <Formik
-        initialValues={{
-          email: "",
-          password: "",
-        }}
-        validationSchema={SignInSchema}
-        onSubmit={signIn}
-      >
-        {({ errors, touched }) => (
-          <Form className="column w-full">
-            <label htmlFor="email">Email</label>
-            <Field
-              className={cn(
-                "input",
-                errors.email && touched.email && "bg-red-50"
-              )}
-              id="email"
+    <Card className="w-[350px]">
+      <CardHeader>
+        <CardTitle className="text-4xl font-bold">Sign In</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(signIn)}>
+            <FormField
+              control={form.control}
               name="email"
-              placeholder="jane@acme.com"
-              type="email"
-            />
-            {errors.email && touched.email ? (
-              <div className="text-red-600">{String(errors.email)}</div>
-            ) : null}
-
-            <label htmlFor="email">Password</label>
-            <Field
-              className={cn(
-                "input",
-                errors.password && touched.password && "bg-red-50"
+              render={({ field }) => (
+                <FormItem className="text-start mb-4">
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="mail@example.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-              id="password"
-              name="password"
-              type="password"
             />
-            {errors.password && touched.password ? (
-              <div className="text-red-600">{String(errors.password)}</div>
-            ) : null}
-
-            <Link href="/reset-password" className="link w-full">
-              Forgot your password?
-            </Link>
-
-            <button className="button-inverse w-full" type="submit">
-              Submit
-            </button>
-          </Form>
-        )}
-      </Formik>
-      {errorMsg && <div className="text-red-600">{errorMsg}</div>}
-      <Link href="/sign-up" className="link w-full">
-        Don&apos;t have an account? Sign Up.
-      </Link>
-    </div>
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem className="text-start">
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="your password"
+                      type="password"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="text-end mb-4">
+              <Button variant="link">
+                <Link href="/reset-password">Forgot your password?</Link>
+              </Button>
+            </div>
+            <Button type="submit" className="w-full">
+              Login
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+      <CardFooter className="flex justify-center">
+        <Button variant="link">
+          <Link href="/sign-up">Don&apos;t have an account? Sign Up.</Link>
+        </Button>
+      </CardFooter>
+    </Card>
   );
 };
 
